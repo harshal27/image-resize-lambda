@@ -7,10 +7,13 @@ var storage = require(config.STORAGE);
 
 
 const functionMapping = {
+    'smartcropPlus': applySmartCropPlus,
+    'cropPlus': applyCropPlus,
+    'coverPlus': applyCoverResizePlus,
+    'raw': rawImage,
     'smartcrop': applySmartCrop,
     'crop': applyCrop,
     'cover': applyCoverResize,
-    'raw': rawImage
 };
 
 function processImage(size, path, destPath, imageProcessType, processImageCallback) {
@@ -47,6 +50,37 @@ function getCropFunction(cropType) {
 }
 
 
+function applySmartCropPlus(image, cropSize, callback) {
+    smartcrop.crop(image, cropSize).then(function(result) {
+        var crop = result.topCrop;
+        sharp(image)
+            .extract({ width: crop.width, height: crop.height, left: crop.x, top: crop.y })
+            .resize(cropSize.width, cropSize.height)
+            .toBuffer(callback)
+    }, callback);
+}
+
+function applyCropPlus(image, cropSize, callback) {
+    sharp(image)
+        .resize(cropSize.width, cropSize.height)
+        .toBuffer(callback)
+}
+
+function applyCoverResizePlus(image, cropSize, callback) {
+    sharp(image)
+        .resize(cropSize.width, cropSize.height)
+        .max()
+        .toBuffer(callback)
+}
+
+function rawImage(image, cropSize, callback) {
+    if (cropSize.width || cropSize.height) {
+        callback({}); // raise error if height or width is provided with rawType
+        return ;
+    }
+    callback(null, image, {});
+}
+
 function applySmartCrop(image, cropSize, callback) {
     smartcrop.crop(image, cropSize).then(function(result) {
         var crop = result.topCrop;
@@ -68,14 +102,6 @@ function applyCoverResize(image, cropSize, callback) {
         .resize(cropSize.width, cropSize.height)
         .max()
         .toBuffer(callback)
-}
-
-function rawImage(image, cropSize, callback) {
-    if (cropSize.width || cropSize.height) {
-        callback({}); // raise error if height or width is provided with rawType
-        return ;
-    }
-    callback(null, image, {});
 }
 
 exports.processImage = processImage;
